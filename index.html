@@ -2,12 +2,48 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>KOL-TRANS Car Mangaer</title>
+  <title>KOL-TRANS Car Manager</title>
 </head>
 <body>
-  <h1>TU bedzie strona</h1>
-  <h1>TEST WEBSTORM</h1>
-  <h1>TEST WEBSTORM2</h1>
-  <p>GITHUB.</p>
+
+<h2>Logowanie</h2>
+
+<input type="email" id="email" placeholder="Email">
+<input type="password" id="password" placeholder="Hasło">
+<button onclick="login()">Zaloguj</button>
+
+<p id="msg"></p>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAFp4tfV1bvfafRzu9OX9SJzst3EWsR3YE",
+    authDomain: "kol-trans-car-manager-login.firebaseapp.com",
+    projectId: "kol-trans-car-manager-login",
+    storageBucket: "kol-trans-car-manager-login.firebasestorage.app",
+    messagingSenderId: "278853848291",
+    appId: "1:278853848291:web:6ca943722debac13b4c9d6",
+    measurementId: "G-S7RYS41TRC"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  window.login = function () {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    signInWithEmailAndPassword(auth, email, password)
+            .then(() => {
+              document.body.innerHTML = "<h1>Zalogowano</h1>";
+            })
+            .catch(err => {
+              document.getElementById("msg").innerText = err.message;
+            });
+  }
+</script>
+
 </body>
 </html>
