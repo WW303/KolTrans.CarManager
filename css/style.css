@@ -1,0 +1,160 @@
+/* --- GŁÓWNE USTAWIENIA --- */
+body {
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* --- TRYB CIEMNY (Dark Mode) --- */
+body.dark {
+    background-color: #020617;
+    color: #f1f5f9;
+}
+
+/* --- TRYB JASNY (Light Mode) --- */
+body:not(.dark) {
+    background-color: #f1f5f9;
+    color: #000000;
+}
+
+/* --- NAWIGACJA I LOGO (Menu boczne) --- */
+
+/* LOGO I PODTYTUŁ - WYMUSZENIE KOLORÓW */
+/* Tryb Jasny */
+
+
+body:not(.dark) aside h1{
+    color: #4f46e5 !important;
+}
+
+
+
+body:not(.dark) aside p,
+body:not(.dark) .text-indigo-400,
+body:not(.dark) .text-slate-500 {
+    color: #000000 !important;
+}
+
+
+
+/* Tryb Ciemny */
+body.dark aside h1 {
+    color: #818cf8 !important; /* Jasny fioletowy */
+}
+body.dark aside p {
+    color: #ffffff !important; /* Slate 400 */
+}
+
+/* NAPISY I IKONY MENU: Mapa Lokalizacji, Odebrane Pojazdy */
+/* Tryb Jasny */
+body:not(.dark) .nav-link:not(.active),
+body:not(.dark) .nav-link:not(.active) span,
+body:not(.dark) .nav-link:not(.active) svg {
+    color: #000000 !important;
+}
+
+/* Tryb Ciemny */
+body.dark .nav-link:not(.active),
+body.dark .nav-link:not(.active) span {
+    color: #eef0ff !important;
+}
+
+/* HOVER (Najazd myszką) */
+body:not(.dark) .nav-link:not(.active):hover {
+    background-color: #e2e8f0;
+    color: #000000 !important;
+}
+
+body.dark .nav-link:not(.active):hover {
+    background-color: #1e293b;
+    color: #ffffff !important;
+}
+
+/* LINK AKTYWNY (Zawsze fioletowy) */
+.nav-link.active {
+    background-color: #4f46e5 !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+}
+
+/* --- ADAPTACJA ELEMENTÓW UI --- */
+
+/* Karty i kontenery */
+body.dark .bg-slate-900,
+body.dark #mapContainer,
+body.dark #sectionMap > div:first-child,
+body.dark #sectionVehicles > div {
+    background-color: #0f172a;
+    border-color: #1e293b;
+}
+
+body:not(.dark) .bg-slate-900,
+body:not(.dark) #mapContainer,
+body:not(.dark) #sectionMap > div:first-child,
+body:not(.dark) #sectionVehicles > div {
+    background-color: #ffffff;
+    border-color: #e2e8f0;
+}
+
+/* Nagłówki strony i pogrubienia */
+body:not(.dark) #pageTitle,
+body:not(.dark) .font-semibold,
+body:not(.dark) .text-slate-100,
+body:not(.dark) .text-slate-200 {
+    color: #000000 !important;
+}
+
+/* Przyciski funkcyjne */
+body:not(.dark) #toggleBtn {
+    background-color: #ffffff;
+    border-color: #cbd5e1;
+    color: #000000 !important;
+}
+
+/* --- SIDEBAR I STRUKTURA --- */
+aside {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 16rem;
+}
+
+.glass-sidebar {
+    backdrop-filter: blur(12px);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+body.dark .glass-sidebar {
+    background: rgba(15, 23, 42, 0.8);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+body:not(.dark) .glass-sidebar {
+    background: rgba(255, 255, 255, 0.95);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* --- MAPA I SCROLLBAR --- */
+#map {
+    width: 100%;
+    height: 70vh;
+    display: none;
+    border-radius: 1rem;
+}
+
+body.dark #map { border: 1px solid rgba(255, 255, 255, 0.1); }
+body:not(.dark) #map { border: 1px solid rgba(0, 0, 0, 0.1); }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+body.dark ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+body:not(.dark) ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+/* Animacje i reszta struktury bez zmian */
+.sidebar-content { transition: opacity 0.2s ease-in-out; opacity: 1; height: 100%; display: flex; flex-direction: column; }
+.sidebar-hidden { width: 0 !important; padding: 0 !important; border-right: none !important; }
+.sidebar-hidden .sidebar-content { opacity: 0; pointer-events: none; }
+.main-content { height: 100vh; overflow-y: auto; }
+.animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
