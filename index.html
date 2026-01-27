@@ -37,7 +37,7 @@
 
     signInWithEmailAndPassword(auth, email, password)
             .then(() => {
-              document.body.innerHTML = "<h1>Zalogowano</h1>";
+              document.body.innerHTML = "<h1>Zalogowano!</h1>";
             })
             .catch(err => {
               document.getElementById("msg").innerText = err.message;
