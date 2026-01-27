@@ -37,7 +37,8 @@
 
     signInWithEmailAndPassword(auth, email, password)
             .then(() => {
-              document.body.innerHTML = "<h1>Zalogowano!</h1>";
+
+              window.location.href = "dashboard.html";
             })
             .catch(err => {
               document.getElementById("msg").innerText = err.message;
