@@ -8,6 +8,7 @@ const firebaseConfig = {
     storageBucket: "kol-trans-car-manager-login.firebasestorage.app",
     messagingSenderId: "278853848291",
     appId: "1:278853848291:web:6ca943722debac13b4c9d6"
+
 };
 
 const app = initializeApp(firebaseConfig);
