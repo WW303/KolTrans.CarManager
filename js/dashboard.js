@@ -103,6 +103,12 @@ nVehicles.addEventListener('click', () => switchTab('vehicles'));
 const showMapBtn = document.getElementById("showMapBtn");
 const mapDiv = document.getElementById("map");
 const placeholder = document.getElementById("mapPlaceholder");
+const addressInput = document.getElementById("address_input");
+const addAddressBtn = document.getElementById("addAddressBtn");
+const addressStatus = document.getElementById("address_status");
+const carMakeInput = document.getElementById("car_make_input");
+const carModelInput = document.getElementById("car_model_input");
+const carNotesInput = document.getElementById("car_notes_input");
 
 showMapBtn.onclick = () => {
     const apiKeyInput = document.getElementById('api_key_input');
@@ -127,6 +133,68 @@ showMapBtn.onclick = () => {
     }
 };
 
+function setAddressStatus(message, type = "info") {
+    if (!addressStatus) return;
+    addressStatus.innerText = message;
+    addressStatus.classList.remove("hidden", "text-slate-500", "text-red-400", "text-emerald-400");
+    if (type === "error") addressStatus.classList.add("text-red-400");
+    else if (type === "success") addressStatus.classList.add("text-emerald-400");
+    else addressStatus.classList.add("text-slate-500");
+}
+
+function addAddressPoint() {
+    const address = addressInput?.value.trim();
+    if (!address) {
+        setAddressStatus("Wpisz adres.", "error");
+        addressInput?.focus();
+        return;
+    }
+    if (!window.mapInstance || !window.mapGeocoder) {
+        setAddressStatus("Najpierw wczytaj mape.", "error");
+        return;
+    }
+
+    const carMake = carMakeInput?.value.trim() || "Nie podano";
+    const carModel = carModelInput?.value.trim() || "Nie podano";
+    const carNotes = carNotesInput?.value.trim() || "Brak uwag";
+
+    setAddressStatus("Szukam adresu...", "info");
+    window.mapGeocoder.geocode({ address }, (results, status) => {
+        if (status === "OK" && results && results.length) {
+            const location = results[0].geometry.location;
+            const marker = new google.maps.Marker({
+                map: window.mapInstance,
+                position: location,
+                title: address,
+            });
+            const infoContent = `
+                <div style="min-width:220px">
+                    <div style="font-weight:600;margin-bottom:4px">${address}</div>
+                    <div><strong>Marka:</strong> ${carMake}</div>
+                    <div><strong>Model:</strong> ${carModel}</div>
+                    <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
+                </div>
+            `;
+            marker.addListener("click", () => {
+                window.mapInfoWindow.setContent(infoContent);
+                window.mapInfoWindow.open(window.mapInstance, marker);
+            });
+            if (!window.mapMarkers) window.mapMarkers = [];
+            window.mapMarkers.push(marker);
+            window.mapInstance.setCenter(location);
+            window.mapInstance.setZoom(14);
+            setAddressStatus("Dodano punkt na mapie.", "success");
+        } else {
+            setAddressStatus("Nie znaleziono adresu.", "error");
+        }
+    });
+}
+
+addAddressBtn?.addEventListener("click", addAddressPoint);
+addressInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") addAddressPoint();
+});
+
 function loadMap(key) {
     if(window.mapLoaded) return;
     window.mapLoaded = true;
@@ -134,10 +202,14 @@ function loadMap(key) {
     script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
     script.async = true;
     script.onload = () => {
-        new google.maps.Map(mapDiv, {
+        window.mapInstance = new google.maps.Map(mapDiv, {
             center: { lat: 52.2297, lng: 21.0122 },
             zoom: 10,
         });
+        window.mapGeocoder = new google.maps.Geocoder();
+        window.mapInfoWindow = new google.maps.InfoWindow();
+        window.mapMarkers = [];
+        setAddressStatus("Mapa gotowa. Wpisz adres i dodaj punkt.", "info");
     };
     document.head.appendChild(script);
 }

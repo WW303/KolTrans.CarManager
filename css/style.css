@@ -153,7 +153,9 @@ body:not(.dark) .nav-link.active {
     box-shadow: 0 4px 15px rgba(67, 56, 255, 0.2);
 }
 
-body:not(.dark) input {
+body:not(.dark) input,
+body:not(.dark) textarea,
+body:not(.dark) select {
     background-color: #f1f5f9 !important;
     border-color: #cbd5e1 !important;
     color: #0f172a !important;
@@ -178,4 +180,19 @@ body:not(.dark) #toggleBtn {
     width: 0 !important;
     padding: 0 !important;
     overflow: hidden;
+}
+
+/* --- GOOGLE MAPS INFO WINDOW --- */
+body.dark .map-info {
+    color: #e2e8f0;
+}
+body.dark .map-info strong {
+    color: #94a3b8;
+}
+
+body:not(.dark) .map-info {
+    color: #0f172a;
+}
+body:not(.dark) .map-info strong {
+    color: #475569;
 }
