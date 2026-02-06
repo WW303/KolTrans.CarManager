@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const firebaseConfig = {
     apiKey: "AIzaSyAFp4tfV1bvfafRzu9OX9SJzst3EWsR3YE",
@@ -12,6 +13,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const supabase = createClient(
+    "https://wxmqeaxdptyajowxmawj.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4bXFlYXhkcHR5YWpvd3htYXdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTA4MDksImV4cCI6MjA4NTk2NjgwOX0.1yfbvv-kXB-usCeJhpV1Xkc74Nbd5V7lxlUZB4qvYHI"
+);
 
 const sidebar = document.getElementById('sidebar');
 const toggleBtn = document.getElementById('toggleBtn');
@@ -106,8 +111,10 @@ const placeholder = document.getElementById("mapPlaceholder");
 const addressInput = document.getElementById("address_input");
 const addAddressBtn = document.getElementById("addAddressBtn");
 const addressStatus = document.getElementById("address_status");
+const destinationInput = document.getElementById("destination_input");
 const carMakeInput = document.getElementById("car_make_input");
 const carModelInput = document.getElementById("car_model_input");
+const phoneInput = document.getElementById("phone_input");
 const carNotesInput = document.getElementById("car_notes_input");
 
 showMapBtn.onclick = () => {
@@ -129,7 +136,11 @@ showMapBtn.onclick = () => {
         placeholder.style.display = "none";
         showMapBtn.innerText = "Ukryj Mapę";
         showMapBtn.classList.replace("bg-indigo-600", "bg-red-500");
-        loadMap(currentKey);
+        if (window.mapLoaded) {
+            loadMarkersFromDb();
+        } else {
+            loadMap(currentKey);
+        }
     }
 };
 
@@ -142,7 +153,7 @@ function setAddressStatus(message, type = "info") {
     else addressStatus.classList.add("text-slate-500");
 }
 
-function addAddressPoint() {
+async function addAddressPoint() {
     const address = addressInput?.value.trim();
     if (!address) {
         setAddressStatus("Wpisz adres.", "error");
@@ -156,37 +167,43 @@ function addAddressPoint() {
 
     const carMake = carMakeInput?.value.trim() || "Nie podano";
     const carModel = carModelInput?.value.trim() || "Nie podano";
+    const phone = phoneInput?.value.trim() || "Nie podano";
+    const destination = destinationInput?.value.trim() || "Nie podano";
     const carNotes = carNotesInput?.value.trim() || "Brak uwag";
 
     setAddressStatus("Szukam adresu...", "info");
-    window.mapGeocoder.geocode({ address }, (results, status) => {
-        if (status === "OK" && results && results.length) {
-            const location = results[0].geometry.location;
-            const marker = new google.maps.Marker({
-                map: window.mapInstance,
-                position: location,
-                title: address,
-            });
-            const infoContent = `
-                <div style="min-width:220px">
-                    <div style="font-weight:600;margin-bottom:4px">${address}</div>
-                    <div><strong>Marka:</strong> ${carMake}</div>
-                    <div><strong>Model:</strong> ${carModel}</div>
-                    <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
-                </div>
-            `;
-            marker.addListener("click", () => {
-                window.mapInfoWindow.setContent(infoContent);
-                window.mapInfoWindow.open(window.mapInstance, marker);
-            });
-            if (!window.mapMarkers) window.mapMarkers = [];
-            window.mapMarkers.push(marker);
-            window.mapInstance.setCenter(location);
-            window.mapInstance.setZoom(14);
-            setAddressStatus("Dodano punkt na mapie.", "success");
-        } else {
+    window.mapGeocoder.geocode({ address }, async (results, status) => {
+        if (status !== "OK" || !results || !results.length) {
             setAddressStatus("Nie znaleziono adresu.", "error");
+            return;
         }
+
+        const location = results[0].geometry.location;
+        const lat = typeof location.lat === "function" ? location.lat() : location.lat;
+        const lng = typeof location.lng === "function" ? location.lng() : location.lng;
+
+        setAddressStatus("Zapisuję punkt w bazie...", "info");
+        const { error } = await supabase.from("cars").insert([
+            {
+                adres: address,
+                marka: carMake,
+                model: carModel,
+                uwagi: carNotes,
+                czyOdebrany: false,
+                docelowo: destination,
+                numerTelefonu: phone,
+                lat,
+                lng,
+            },
+        ]);
+
+        if (error) {
+            setAddressStatus("Nie udało się zapisać punktu.", "error");
+            return;
+        }
+
+        setAddressStatus("Punkt zapisany. Odświeżam mapę...", "success");
+        await loadMarkersFromDb();
     });
 }
 
@@ -209,9 +226,83 @@ function loadMap(key) {
         window.mapGeocoder = new google.maps.Geocoder();
         window.mapInfoWindow = new google.maps.InfoWindow();
         window.mapMarkers = [];
-        setAddressStatus("Mapa gotowa. Wpisz adres i dodaj punkt.", "info");
+        setAddressStatus("Mapa gotowa. Wczytuję punkty...", "info");
+        loadMarkersFromDb();
     };
     document.head.appendChild(script);
+}
+
+function buildInfoContent(record) {
+    const address = record.adres || "Nie podano";
+    const destination = record.docelowo || "Nie podano";
+    const carMake = record.marka || "Nie podano";
+    const carModel = record.model || "Nie podano";
+    const phone = record.numerTelefonu || "Nie podano";
+    const carNotes = record.uwagi || "Brak uwag";
+    return `
+        <div style="min-width:220px;color:#000">
+            <div style="font-weight:600;margin-bottom:4px">${address}</div>
+            <div><strong>Miejsce docelowe:</strong> ${destination}</div>
+            <div><strong>Marka:</strong> ${carMake}</div>
+            <div><strong>Model:</strong> ${carModel}</div>
+            <div><strong>Telefon:</strong> ${phone}</div>
+            <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
+        </div>
+    `;
+}
+
+async function loadMarkersFromDb() {
+    if (!window.mapInstance || !window.mapGeocoder) return;
+    if (window.mapMarkers?.length) {
+        window.mapMarkers.forEach(marker => marker.setMap(null));
+        window.mapMarkers = [];
+    }
+
+    const { data, error } = await supabase
+        .from("cars")
+        .select("id, adres, marka, model, uwagi, docelowo, numerTelefonu, lat, lng")
+        .eq("czyOdebrany", false)
+        .order("id", { ascending: false });
+
+    if (error) {
+        setAddressStatus("Błąd wczytywania punktów z bazy.", "error");
+        return;
+    }
+
+    if (!data?.length) {
+        setAddressStatus("Brak punktów do wyświetlenia.", "info");
+        return;
+    }
+
+    let firstLocation = null;
+    data.forEach(record => {
+        const lat = Number(record.lat);
+        const lng = Number(record.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            return;
+        }
+        const location = { lat, lng };
+        if (!firstLocation) firstLocation = location;
+        const marker = new google.maps.Marker({
+            map: window.mapInstance,
+            position: location,
+            title: record.adres || "",
+        });
+        const infoContent = buildInfoContent(record);
+        marker.addListener("click", () => {
+            window.mapInfoWindow.setContent(infoContent);
+            window.mapInfoWindow.open(window.mapInstance, marker);
+        });
+        window.mapMarkers.push(marker);
+    });
+
+    if (firstLocation) {
+        window.mapInstance.setCenter(firstLocation);
+        window.mapInstance.setZoom(11);
+        setAddressStatus("Punkty wczytane z bazy.", "success");
+    } else {
+        setAddressStatus("Brak punktów z poprawnymi współrzędnymi.", "info");
+    }
 }
 
 onAuthStateChanged(auth, user => {
@@ -221,3 +312,4 @@ onAuthStateChanged(auth, user => {
 document.getElementById("logoutBtn").onclick = () => {
     signOut(auth).then(() => { window.location.href = "index.html"; });
 };
+
