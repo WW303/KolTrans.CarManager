@@ -30,6 +30,10 @@ const title = document.getElementById('pageTitle');
 const brandLogo = document.querySelector('aside h1');
 const brandSub = document.querySelector('aside p');
 const body = document.body;
+const vehiclesList = document.getElementById('vehiclesList');
+const groupByDestinationBtn = document.getElementById('groupByDestinationBtn');
+let receivedVehiclesCache = [];
+let groupByDestination = false;
 
 // --- Logika Sidebara ---
 function openMenu() {
@@ -97,6 +101,7 @@ function switchTab(target) {
         nVehicles.classList.add('active');
         sVehicles.classList.remove('hidden');
         title.innerText = "Odebrane Pojazdy";
+        loadReceivedVehicles();
     }
     if (window.innerWidth < 768) closeMenu();
 }
@@ -116,6 +121,8 @@ const carMakeInput = document.getElementById("car_make_input");
 const carModelInput = document.getElementById("car_model_input");
 const phoneInput = document.getElementById("phone_input");
 const carNotesInput = document.getElementById("car_notes_input");
+const addressFormFields = document.getElementById("addressFormFields");
+let addressFormHideTimer = null;
 
 showMapBtn.onclick = () => {
     const apiKeyInput = document.getElementById('api_key_input');
@@ -153,6 +160,20 @@ function setAddressStatus(message, type = "info") {
     else addressStatus.classList.add("text-slate-500");
 }
 
+function toggleAddressForm(hidden) {
+    if (!addressFormFields) return;
+    addressFormFields.classList.toggle("hidden", hidden);
+}
+
+function resetAddressForm() {
+    if (addressInput) addressInput.value = "";
+    if (carMakeInput) carMakeInput.value = "";
+    if (carModelInput) carModelInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+    if (destinationInput) destinationInput.value = "";
+    if (carNotesInput) carNotesInput.value = "";
+}
+
 async function addAddressPoint() {
     const address = addressInput?.value.trim();
     if (!address) {
@@ -171,10 +192,16 @@ async function addAddressPoint() {
     const destination = destinationInput?.value.trim() || "Nie podano";
     const carNotes = carNotesInput?.value.trim() || "Brak uwag";
 
+    if (addressFormHideTimer) {
+        clearTimeout(addressFormHideTimer);
+        addressFormHideTimer = null;
+    }
+    toggleAddressForm(true);
     setAddressStatus("Szukam adresu...", "info");
     window.mapGeocoder.geocode({ address }, async (results, status) => {
         if (status !== "OK" || !results || !results.length) {
             setAddressStatus("Nie znaleziono adresu.", "error");
+            toggleAddressForm(false);
             return;
         }
 
@@ -199,11 +226,16 @@ async function addAddressPoint() {
 
         if (error) {
             setAddressStatus("Nie udało się zapisać punktu.", "error");
+            toggleAddressForm(false);
             return;
         }
 
         setAddressStatus("Punkt zapisany. Odświeżam mapę...", "success");
         await loadMarkersFromDb();
+        resetAddressForm();
+        addressFormHideTimer = setTimeout(() => {
+            toggleAddressForm(false);
+        }, 1200);
     });
 }
 
@@ -239,6 +271,7 @@ function buildInfoContent(record) {
     const carModel = record.model || "Nie podano";
     const phone = record.numerTelefonu || "Nie podano";
     const carNotes = record.uwagi || "Brak uwag";
+    const id = record.id || "Nie podano";
     return `
         <div style="min-width:220px;color:#000">
             <div style="font-weight:600;margin-bottom:4px">${address}</div>
@@ -247,8 +280,135 @@ function buildInfoContent(record) {
             <div><strong>Model:</strong> ${carModel}</div>
             <div><strong>Telefon:</strong> ${phone}</div>
             <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
+            <button class="mark-received-btn" data-id="${record.id}" style="margin-top:8px;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
+                Oznacz odebrany
+            </button>
         </div>
     `;
+}
+
+async function markAsReceived(recordId, button) {
+    if (!recordId) return;
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Zmieniam status...";
+    }
+    const { error } = await supabase
+        .from("cars")
+        .update({ czyOdebrany: true })
+        .eq("id", recordId);
+
+    if (error) {
+        if (button) {
+            button.disabled = false;
+            button.innerText = "Blad. Sprobuj ponownie";
+        }
+        return;
+    }
+
+    window.mapInfoWindow?.close();
+    await loadMarkersFromDb();
+}
+
+function updateGroupButtonLabel() {
+    if (!groupByDestinationBtn) return;
+    groupByDestinationBtn.innerText = groupByDestination
+        ? "Pokaz wszystkie razem"
+        : "Grupuj po miejscu docelowym";
+}
+
+function buildVehicleCard(record) {
+    const address = record.adres || "Nie podano";
+    const destination = record.docelowo || "Nie podano";
+    const carMake = record.marka || "Nie podano";
+    const carModel = record.model || "Nie podano";
+    const phone = record.numerTelefonu || "Nie podano";
+    const carNotes = record.uwagi || "Brak uwag";
+
+    return `
+        <div class="vehicle-card">
+            <div class="vehicle-card-header">
+                <div class="vehicle-main">${carMake} ${carModel}</div>
+                <div class="vehicle-destination"><span class="vehicle-destination-label">Miejsce docelowe:</span> ${destination}</div>
+            </div>
+            <div class="vehicle-grid">
+                <div><span class="vehicle-label">Adres:</span> ${address}</div>
+                <div><span class="vehicle-label">Telefon:</span> ${phone}</div>
+                <div class="vehicle-notes"><span class="vehicle-label">Uwagi:</span> ${carNotes}</div>
+            </div>
+        </div>
+    `;
+}
+
+function bindGroupToggles() {
+    const toggles = document.querySelectorAll(".vehicle-group-toggle");
+    toggles.forEach(toggle => {
+        toggle.addEventListener("click", () => {
+            const targetId = toggle.getAttribute("data-target");
+            const list = document.getElementById(targetId);
+            if (!list) return;
+            const isCollapsed = list.classList.toggle("is-collapsed");
+            toggle.setAttribute("aria-expanded", String(!isCollapsed));
+        });
+    });
+}
+
+function renderReceivedVehicles(records) {
+    if (!vehiclesList) return;
+    if (!records?.length) {
+        vehiclesList.innerHTML = `
+            <div class="vehicles-empty">
+                Brak odebranych pojazdow do wyswietlenia.
+            </div>
+        `;
+        return;
+    }
+
+    if (!groupByDestination) {
+        vehiclesList.innerHTML = records.map(buildVehicleCard).join("");
+        return;
+    }
+
+    const groups = records.reduce((acc, record) => {
+        const destination = record.docelowo || "Nie podano";
+        if (!acc[destination]) acc[destination] = [];
+        acc[destination].push(record);
+        return acc;
+    }, {});
+
+    vehiclesList.innerHTML = Object.entries(groups)
+        .map(([destination, items], index) => `
+            <div class="vehicle-group">
+                <button class="vehicle-group-toggle" type="button" aria-expanded="false" data-target="vehicle-group-${index}">
+                    <span class="vehicle-group-title">${destination}</span>
+                    <span class="vehicle-group-count">${items.length}</span>
+                </button>
+                <div class="vehicle-group-list is-collapsed" id="vehicle-group-${index}">
+                    ${items.map(buildVehicleCard).join("")}
+                </div>
+            </div>
+        `)
+        .join("");
+    bindGroupToggles();
+}
+
+async function loadReceivedVehicles() {
+    if (!vehiclesList) return;
+    vehiclesList.innerHTML = `<div class="vehicles-loading">Wczytuje odebrane pojazdy...</div>`;
+
+    const { data, error } = await supabase
+        .from("cars")
+        .select("id, adres, marka, model, uwagi, docelowo, numerTelefonu")
+        .eq("czyOdebrany", true)
+        .order("id", { ascending: false });
+
+    if (error) {
+        vehiclesList.innerHTML = `<div class="vehicles-empty">Nie udalo sie wczytac pojazdow.</div>`;
+        return;
+    }
+
+    receivedVehiclesCache = data || [];
+    renderReceivedVehicles(receivedVehiclesCache);
 }
 
 async function loadMarkersFromDb() {
@@ -292,6 +452,13 @@ async function loadMarkersFromDb() {
         marker.addListener("click", () => {
             window.mapInfoWindow.setContent(infoContent);
             window.mapInfoWindow.open(window.mapInstance, marker);
+            google.maps.event.addListenerOnce(window.mapInfoWindow, "domready", () => {
+                const selector = `.mark-received-btn[data-id="${record.id}"]`;
+                const button = document.querySelector(selector);
+                if (button) {
+                    button.addEventListener("click", () => markAsReceived(record.id, button), { once: true });
+                }
+            });
         });
         window.mapMarkers.push(marker);
     });
@@ -304,6 +471,14 @@ async function loadMarkersFromDb() {
         setAddressStatus("Brak punktów z poprawnymi współrzędnymi.", "info");
     }
 }
+
+groupByDestinationBtn?.addEventListener("click", () => {
+    groupByDestination = !groupByDestination;
+    updateGroupButtonLabel();
+    renderReceivedVehicles(receivedVehiclesCache);
+});
+
+updateGroupButtonLabel();
 
 onAuthStateChanged(auth, user => {
     if (!user) window.location.href = "index.html";
