@@ -100,7 +100,7 @@ function switchTab(target) {
     } else {
         nVehicles.classList.add('active');
         sVehicles.classList.remove('hidden');
-        title.innerText = "Odebrane Pojazdy";
+        title.innerText = "Pojazdy";
         loadReceivedVehicles();
     }
     if (window.innerWidth < 768) closeMenu();
@@ -113,16 +113,47 @@ nVehicles.addEventListener('click', () => switchTab('vehicles'));
 const showMapBtn = document.getElementById("showMapBtn");
 const mapDiv = document.getElementById("map");
 const placeholder = document.getElementById("mapPlaceholder");
+const countryFilterAllBtn = document.getElementById("countryFilterAllBtn");
+const countryFilterPolandBtn = document.getElementById("countryFilterPolandBtn");
+const countryFilterFranceBtn = document.getElementById("countryFilterFranceBtn");
 const addressInput = document.getElementById("address_input");
 const addAddressBtn = document.getElementById("addAddressBtn");
+const addAddressAsReceivedBtn = document.getElementById("addAddressAsReceivedBtn");
 const addressStatus = document.getElementById("address_status");
 const destinationInput = document.getElementById("destination_input");
+const destinationCountryInput = document.getElementById("destination_country_input");
 const carMakeInput = document.getElementById("car_make_input");
 const carModelInput = document.getElementById("car_model_input");
 const phoneInput = document.getElementById("phone_input");
+const pickupPhoneInput = document.getElementById("pickup_phone_input");
 const carNotesInput = document.getElementById("car_notes_input");
 const addressFormFields = document.getElementById("addressFormFields");
 let addressFormHideTimer = null;
+let selectedCountryFilter = "all";
+
+function updateCountryFilterButtons() {
+    const setState = (button, isActive) => {
+        if (!button) return;
+        button.classList.toggle("bg-indigo-600", isActive);
+        button.classList.toggle("hover:bg-indigo-500", isActive);
+        button.classList.toggle("text-white", isActive);
+        button.classList.toggle("border-indigo-500", isActive);
+        button.classList.toggle("bg-slate-800", !isActive);
+        button.classList.toggle("hover:bg-slate-700", !isActive);
+        button.classList.toggle("text-slate-300", !isActive);
+        button.classList.toggle("border-slate-700", !isActive);
+    };
+
+    setState(countryFilterAllBtn, selectedCountryFilter === "all");
+    setState(countryFilterPolandBtn, selectedCountryFilter === "Polska");
+    setState(countryFilterFranceBtn, selectedCountryFilter === "Francja");
+}
+
+function setCountryFilter(filter) {
+    selectedCountryFilter = filter;
+    updateCountryFilterButtons();
+    loadMarkersFromDb();
+}
 
 showMapBtn.onclick = () => {
     const apiKeyInput = document.getElementById('api_key_input');
@@ -170,11 +201,13 @@ function resetAddressForm() {
     if (carMakeInput) carMakeInput.value = "";
     if (carModelInput) carModelInput.value = "";
     if (phoneInput) phoneInput.value = "";
+    if (pickupPhoneInput) pickupPhoneInput.value = "";
     if (destinationInput) destinationInput.value = "";
+    if (destinationCountryInput) destinationCountryInput.value = "";
     if (carNotesInput) carNotesInput.value = "";
 }
 
-async function addAddressPoint() {
+async function addAddressPoint(isReceived = false) {
     const address = addressInput?.value.trim();
     if (!address) {
         setAddressStatus("Wpisz adres.", "error");
@@ -189,8 +222,16 @@ async function addAddressPoint() {
     const carMake = carMakeInput?.value.trim() || "Nie podano";
     const carModel = carModelInput?.value.trim() || "Nie podano";
     const phone = phoneInput?.value.trim() || "Nie podano";
+    const pickupPhone = pickupPhoneInput?.value.trim() || "Nie podano";
     const destination = destinationInput?.value.trim() || "Nie podano";
+    const destinationCountry = destinationCountryInput?.value.trim() || "";
     const carNotes = carNotesInput?.value.trim() || "Brak uwag";
+
+    if (!destinationCountry) {
+        setAddressStatus("Wybierz kraj docelowy.", "error");
+        destinationCountryInput?.focus();
+        return;
+    }
 
     if (addressFormHideTimer) {
         clearTimeout(addressFormHideTimer);
@@ -216,9 +257,11 @@ async function addAddressPoint() {
                 marka: carMake,
                 model: carModel,
                 uwagi: carNotes,
-                czyOdebrany: false,
+                czyOdebrany: isReceived,
                 docelowo: destination,
+                krajDocelowy: destinationCountry,
                 numerTelefonu: phone,
+                numerTelefonuOdbioru: pickupPhone,
                 lat,
                 lng,
             },
@@ -239,9 +282,13 @@ async function addAddressPoint() {
     });
 }
 
-addAddressBtn?.addEventListener("click", addAddressPoint);
+addAddressBtn?.addEventListener("click", () => addAddressPoint(false));
+addAddressAsReceivedBtn?.addEventListener("click", () => addAddressPoint(true));
+countryFilterAllBtn?.addEventListener("click", () => setCountryFilter("all"));
+countryFilterPolandBtn?.addEventListener("click", () => setCountryFilter("Polska"));
+countryFilterFranceBtn?.addEventListener("click", () => setCountryFilter("Francja"));
 addressInput?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") addAddressPoint();
+    if (event.key === "Enter") addAddressPoint(false);
 });
 
 function loadMap(key) {
@@ -267,22 +314,31 @@ function loadMap(key) {
 function buildInfoContent(record) {
     const address = record.adres || "Nie podano";
     const destination = record.docelowo || "Nie podano";
+    const destinationCountry = record.krajDocelowy || "Nie podano";
     const carMake = record.marka || "Nie podano";
     const carModel = record.model || "Nie podano";
     const phone = record.numerTelefonu || "Nie podano";
+    const pickupPhone = record.numerTelefonuOdbioru || "Nie podano";
     const carNotes = record.uwagi || "Brak uwag";
     const id = record.id || "Nie podano";
     return `
         <div style="min-width:220px;color:#000">
             <div style="font-weight:600;margin-bottom:4px">${address}</div>
             <div><strong>Miejsce docelowe:</strong> ${destination}</div>
+            <div><strong>Kraj docelowy:</strong> ${destinationCountry}</div>
             <div><strong>Marka:</strong> ${carMake}</div>
             <div><strong>Model:</strong> ${carModel}</div>
             <div><strong>Telefon:</strong> ${phone}</div>
+            <div><strong>Telefon odbioru:</strong> ${pickupPhone}</div>
             <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
-            <button class="mark-received-btn" data-id="${record.id}" style="margin-top:8px;background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
-                Oznacz odebrany
-            </button>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                <button class="mark-received-btn" data-id="${record.id}" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
+                    Oznacz odebrany
+                </button>
+                <button class="delete-vehicle-btn" data-id="${record.id}" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
+                    Usuń pojazd
+                </button>
+            </div>
         </div>
     `;
 }
@@ -310,6 +366,29 @@ async function markAsReceived(recordId, button) {
     await loadMarkersFromDb();
 }
 
+async function deleteVehicle(recordId, button) {
+    if (!recordId) return;
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Usuwam...";
+    }
+    const { error } = await supabase
+        .from("cars")
+        .delete()
+        .eq("id", recordId);
+
+    if (error) {
+        if (button) {
+            button.disabled = false;
+            button.innerText = "Blad. Sprobuj ponownie";
+        }
+        return;
+    }
+
+    window.mapInfoWindow?.close();
+    await loadMarkersFromDb();
+}
+
 function updateGroupButtonLabel() {
     if (!groupByDestinationBtn) return;
     groupByDestinationBtn.innerText = groupByDestination
@@ -320,9 +399,11 @@ function updateGroupButtonLabel() {
 function buildVehicleCard(record) {
     const address = record.adres || "Nie podano";
     const destination = record.docelowo || "Nie podano";
+    const destinationCountry = record.krajDocelowy || "Nie podano";
     const carMake = record.marka || "Nie podano";
     const carModel = record.model || "Nie podano";
     const phone = record.numerTelefonu || "Nie podano";
+    const pickupPhone = record.numerTelefonuOdbioru || "Nie podano";
     const carNotes = record.uwagi || "Brak uwag";
 
     return `
@@ -330,10 +411,12 @@ function buildVehicleCard(record) {
             <div class="vehicle-card-header">
                 <div class="vehicle-main">${carMake} ${carModel}</div>
                 <div class="vehicle-destination"><span class="vehicle-destination-label">Miejsce docelowe:</span> ${destination}</div>
+                <div class="vehicle-destination"><span class="vehicle-destination-label">Kraj docelowy:</span> ${destinationCountry}</div>
             </div>
             <div class="vehicle-grid">
                 <div><span class="vehicle-label">Adres:</span> ${address}</div>
                 <div><span class="vehicle-label">Telefon:</span> ${phone}</div>
+                <div><span class="vehicle-label">Telefon odbioru:</span> ${pickupPhone}</div>
                 <div class="vehicle-notes"><span class="vehicle-label">Uwagi:</span> ${carNotes}</div>
             </div>
         </div>
@@ -398,7 +481,7 @@ async function loadReceivedVehicles() {
 
     const { data, error } = await supabase
         .from("cars")
-        .select("id, adres, marka, model, uwagi, docelowo, numerTelefonu")
+        .select("id, adres, marka, model, uwagi, docelowo, krajDocelowy, numerTelefonu, numerTelefonuOdbioru")
         .eq("czyOdebrany", true)
         .order("id", { ascending: false });
 
@@ -418,11 +501,16 @@ async function loadMarkersFromDb() {
         window.mapMarkers = [];
     }
 
-    const { data, error } = await supabase
+    let pointsQuery = supabase
         .from("cars")
-        .select("id, adres, marka, model, uwagi, docelowo, numerTelefonu, lat, lng")
-        .eq("czyOdebrany", false)
-        .order("id", { ascending: false });
+        .select("id, adres, marka, model, uwagi, docelowo, krajDocelowy, numerTelefonu, numerTelefonuOdbioru, lat, lng")
+        .eq("czyOdebrany", false);
+
+    if (selectedCountryFilter !== "all") {
+        pointsQuery = pointsQuery.eq("krajDocelowy", selectedCountryFilter);
+    }
+
+    const { data, error } = await pointsQuery.order("id", { ascending: false });
 
     if (error) {
         setAddressStatus("Błąd wczytywania punktów z bazy.", "error");
@@ -453,10 +541,16 @@ async function loadMarkersFromDb() {
             window.mapInfoWindow.setContent(infoContent);
             window.mapInfoWindow.open(window.mapInstance, marker);
             google.maps.event.addListenerOnce(window.mapInfoWindow, "domready", () => {
-                const selector = `.mark-received-btn[data-id="${record.id}"]`;
-                const button = document.querySelector(selector);
-                if (button) {
-                    button.addEventListener("click", () => markAsReceived(record.id, button), { once: true });
+                const markReceivedSelector = `.mark-received-btn[data-id="${record.id}"]`;
+                const markReceivedButton = document.querySelector(markReceivedSelector);
+                if (markReceivedButton) {
+                    markReceivedButton.addEventListener("click", () => markAsReceived(record.id, markReceivedButton), { once: true });
+                }
+
+                const deleteVehicleSelector = `.delete-vehicle-btn[data-id="${record.id}"]`;
+                const deleteVehicleButton = document.querySelector(deleteVehicleSelector);
+                if (deleteVehicleButton) {
+                    deleteVehicleButton.addEventListener("click", () => deleteVehicle(record.id, deleteVehicleButton), { once: true });
                 }
             });
         });
@@ -479,6 +573,7 @@ groupByDestinationBtn?.addEventListener("click", () => {
 });
 
 updateGroupButtonLabel();
+updateCountryFilterButtons();
 
 onAuthStateChanged(auth, user => {
     if (!user) window.location.href = "index.html";
