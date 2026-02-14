@@ -24,15 +24,19 @@ const closeSidebar = document.getElementById('closeSidebar');
 const sidebarOverlay = document.getElementById('sidebarOverlay');
 const nMap = document.getElementById('navMap');
 const nVehicles = document.getElementById('navVehicles');
+const nDeliveredVehicles = document.getElementById('navDeliveredVehicles');
 const sMap = document.getElementById('sectionMap');
 const sVehicles = document.getElementById('sectionVehicles');
+const sDeliveredVehicles = document.getElementById('sectionDeliveredVehicles');
 const title = document.getElementById('pageTitle');
 const brandLogo = document.querySelector('aside h1');
 const brandSub = document.querySelector('aside p');
 const body = document.body;
 const vehiclesList = document.getElementById('vehiclesList');
+const deliveredVehiclesList = document.getElementById('deliveredVehiclesList');
 const groupByDestinationBtn = document.getElementById('groupByDestinationBtn');
 let receivedVehiclesCache = [];
+let deliveredVehiclesCache = [];
 let groupByDestination = false;
 
 // --- Logika Sidebara ---
@@ -90,24 +94,32 @@ themeToggle?.addEventListener('click', () => {
 function switchTab(target) {
     nMap.classList.remove('active');
     nVehicles.classList.remove('active');
+    nDeliveredVehicles.classList.remove('active');
     sMap.classList.add('hidden');
     sVehicles.classList.add('hidden');
+    sDeliveredVehicles.classList.add('hidden');
 
     if(target === 'map') {
         nMap.classList.add('active');
         sMap.classList.remove('hidden');
         title.innerText = "Mapa Lokalizacji";
-    } else {
+    } else if (target === 'vehicles') {
         nVehicles.classList.add('active');
         sVehicles.classList.remove('hidden');
         title.innerText = "Pojazdy";
         loadReceivedVehicles();
+    } else {
+        nDeliveredVehicles.classList.add('active');
+        sDeliveredVehicles.classList.remove('hidden');
+        title.innerText = "Dostarczone pojazdy";
+        loadDeliveredVehicles();
     }
     if (window.innerWidth < 768) closeMenu();
 }
 
 nMap.addEventListener('click', () => switchTab('map'));
 nVehicles.addEventListener('click', () => switchTab('vehicles'));
+nDeliveredVehicles.addEventListener('click', () => switchTab('delivered'));
 
 // --- Logika Mapy ---
 const showMapBtn = document.getElementById("showMapBtn");
@@ -389,6 +401,30 @@ async function deleteVehicle(recordId, button) {
     await loadMarkersFromDb();
 }
 
+async function markAsDelivered(recordId, button) {
+    if (!recordId) return;
+    if (button) {
+        button.disabled = true;
+        button.innerText = "Aktualizuje...";
+    }
+    const { error } = await supabase
+        .from("cars")
+        .update({ czyDostarczony: true, czyOdebrany: true })
+        .eq("id", recordId);
+
+    if (error) {
+        if (button) {
+            button.disabled = false;
+            button.innerText = "Blad. Sprobuj ponownie";
+        }
+        return;
+    }
+
+    await loadReceivedVehicles();
+    await loadDeliveredVehicles();
+    await loadMarkersFromDb();
+}
+
 function updateGroupButtonLabel() {
     if (!groupByDestinationBtn) return;
     groupByDestinationBtn.innerText = groupByDestination
@@ -405,9 +441,13 @@ function buildVehicleCard(record) {
     const phone = record.numerTelefonu || "Nie podano";
     const pickupPhone = record.numerTelefonuOdbioru || "Nie podano";
     const carNotes = record.uwagi || "Brak uwag";
+    const statusClass = record.czyOdebrany ? "vehicle-received" : "vehicle-pending";
+    const statusText = record.czyOdebrany ? "Odebrany" : "Nieodebrany";
+    const isDelivered = Boolean(record.czyDostarczony);
+    const deliveryLabel = isDelivered ? "Dostarczony" : "Oznacz jako dostarczony";
 
     return `
-        <div class="vehicle-card">
+        <div class="vehicle-card ${statusClass}">
             <div class="vehicle-card-header">
                 <div class="vehicle-main">${carMake} ${carModel}</div>
                 <div class="vehicle-destination"><span class="vehicle-destination-label">Miejsce docelowe:</span> ${destination}</div>
@@ -417,7 +457,13 @@ function buildVehicleCard(record) {
                 <div><span class="vehicle-label">Adres:</span> ${address}</div>
                 <div><span class="vehicle-label">Telefon:</span> ${phone}</div>
                 <div><span class="vehicle-label">Telefon odbioru:</span> ${pickupPhone}</div>
+                <div><span class="vehicle-label">Status:</span> <span class="vehicle-status-text">${statusText}</span></div>
                 <div class="vehicle-notes"><span class="vehicle-label">Uwagi:</span> ${carNotes}</div>
+            </div>
+            <div class="vehicle-card-actions">
+                <button class="vehicle-delivery-btn mark-delivered-btn" data-id="${record.id}" ${isDelivered ? "disabled" : ""}>
+                    ${deliveryLabel}
+                </button>
             </div>
         </div>
     `;
@@ -436,12 +482,21 @@ function bindGroupToggles() {
     });
 }
 
+function bindDeliveryButtons() {
+    const buttons = document.querySelectorAll(".mark-delivered-btn");
+    buttons.forEach(button => {
+        const id = button.getAttribute("data-id");
+        if (!id || button.disabled) return;
+        button.addEventListener("click", () => markAsDelivered(id, button), { once: true });
+    });
+}
+
 function renderReceivedVehicles(records) {
     if (!vehiclesList) return;
     if (!records?.length) {
         vehiclesList.innerHTML = `
             <div class="vehicles-empty">
-                Brak odebranych pojazdow do wyswietlenia.
+                Brak pojazdow do wyswietlenia.
             </div>
         `;
         return;
@@ -449,40 +504,63 @@ function renderReceivedVehicles(records) {
 
     if (!groupByDestination) {
         vehiclesList.innerHTML = records.map(buildVehicleCard).join("");
+        bindDeliveryButtons();
         return;
     }
 
     const groups = records.reduce((acc, record) => {
-        const destination = record.docelowo || "Nie podano";
-        if (!acc[destination]) acc[destination] = [];
-        acc[destination].push(record);
+        const destinationRaw = (record.docelowo || "Nie podano").trim();
+        const normalizedKey = destinationRaw.toLocaleLowerCase("pl-PL");
+        if (!acc[normalizedKey]) {
+            acc[normalizedKey] = {
+                label: destinationRaw,
+                items: [],
+            };
+        }
+        acc[normalizedKey].items.push(record);
         return acc;
     }, {});
 
     vehiclesList.innerHTML = Object.entries(groups)
-        .map(([destination, items], index) => `
+        .map(([, group], index) => `
             <div class="vehicle-group">
                 <button class="vehicle-group-toggle" type="button" aria-expanded="false" data-target="vehicle-group-${index}">
-                    <span class="vehicle-group-title">${destination}</span>
-                    <span class="vehicle-group-count">${items.length}</span>
+                    <span class="vehicle-group-title">${group.label}</span>
+                    <span class="vehicle-group-count">${group.items.length}</span>
                 </button>
                 <div class="vehicle-group-list is-collapsed" id="vehicle-group-${index}">
-                    ${items.map(buildVehicleCard).join("")}
+                    ${group.items.map(buildVehicleCard).join("")}
                 </div>
             </div>
         `)
         .join("");
     bindGroupToggles();
+    bindDeliveryButtons();
+}
+
+function renderDeliveredVehicles(records) {
+    if (!deliveredVehiclesList) return;
+    if (!records?.length) {
+        deliveredVehiclesList.innerHTML = `
+            <div class="vehicles-empty">
+                Brak dostarczonych pojazdow do wyswietlenia.
+            </div>
+        `;
+        return;
+    }
+
+    deliveredVehiclesList.innerHTML = records.map(buildVehicleCard).join("");
+    bindDeliveryButtons();
 }
 
 async function loadReceivedVehicles() {
     if (!vehiclesList) return;
-    vehiclesList.innerHTML = `<div class="vehicles-loading">Wczytuje odebrane pojazdy...</div>`;
+    vehiclesList.innerHTML = `<div class="vehicles-loading">Wczytuje pojazdy...</div>`;
 
     const { data, error } = await supabase
         .from("cars")
-        .select("id, adres, marka, model, uwagi, docelowo, krajDocelowy, numerTelefonu, numerTelefonuOdbioru")
-        .eq("czyOdebrany", true)
+        .select("id, adres, marka, model, uwagi, docelowo, krajDocelowy, numerTelefonu, numerTelefonuOdbioru, czyOdebrany, czyDostarczony")
+        .or("czyDostarczony.is.null,czyDostarczony.eq.false")
         .order("id", { ascending: false });
 
     if (error) {
@@ -492,6 +570,25 @@ async function loadReceivedVehicles() {
 
     receivedVehiclesCache = data || [];
     renderReceivedVehicles(receivedVehiclesCache);
+}
+
+async function loadDeliveredVehicles() {
+    if (!deliveredVehiclesList) return;
+    deliveredVehiclesList.innerHTML = `<div class="vehicles-loading">Wczytuje dostarczone pojazdy...</div>`;
+
+    const { data, error } = await supabase
+        .from("cars")
+        .select("id, adres, marka, model, uwagi, docelowo, krajDocelowy, numerTelefonu, numerTelefonuOdbioru, czyOdebrany, czyDostarczony")
+        .eq("czyDostarczony", true)
+        .order("id", { ascending: false });
+
+    if (error) {
+        deliveredVehiclesList.innerHTML = `<div class="vehicles-empty">Nie udalo sie wczytac dostarczonych pojazdow.</div>`;
+        return;
+    }
+
+    deliveredVehiclesCache = data || [];
+    renderDeliveredVehicles(deliveredVehiclesCache);
 }
 
 async function loadMarkersFromDb() {

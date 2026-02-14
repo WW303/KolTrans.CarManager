@@ -48,6 +48,15 @@
                 </svg>
                 <span>Pojazdy</span>
             </div>
+
+            <div id="navDeliveredVehicles"
+                 class="nav-link flex items-center gap-3 p-3 rounded-xl cursor-pointer font-medium transition-all text-slate-400 hover:bg-slate-800">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5">
+                    <path d="M20 7L9 18l-5-5"/>
+                </svg>
+                <span>Dostarczone pojazdy</span>
+            </div>
         </nav>
 
         <div class="mt-auto pt-6 border-t border-slate-800 dark-border-toggle">
@@ -234,6 +243,18 @@
                 </div>
             </div>
             <div id="vehiclesList" class="vehicles-list"></div>
+        </div>
+    </div>
+
+    <div id="sectionDeliveredVehicles" class="hidden animate-fade-in">
+        <div class="vehicles-shell">
+            <div class="vehicles-hero">
+                <div class="vehicles-hero-text">
+                    <h3 class="vehicles-title">DOSTARCZONE POJAZDY</h3>
+                    <p class="vehicles-subtitle">Przegladaj pojazdy dostarczone</p>
+                </div>
+            </div>
+            <div id="deliveredVehiclesList" class="vehicles-list"></div>
         </div>
     </div>
 </main>
