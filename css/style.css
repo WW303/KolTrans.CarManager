@@ -586,12 +586,6 @@ body:not(.dark) .map-popup-notes {
     padding: 10px 12px;
     font-size: 15px;
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-
-.vehicle-search-input:focus {
-    border-color: #6366f1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
 }
 
 .vehicles-toggle-btn {
@@ -781,9 +775,10 @@ body.dark .vehicles-toggle-btn {
 }
 
 body.dark .vehicle-search-input {
-    background: rgba(15, 23, 42, 0.92);
-    border-color: rgba(148, 163, 184, 0.28);
+    background: #0b1220;
+    border-color: #1e293b;
     color: #e2e8f0;
+    box-shadow: none;
 }
 
 body.dark .vehicle-search-input::placeholder {
@@ -879,9 +874,9 @@ body:not(.dark) .vehicles-toggle-btn {
 
 body:not(.dark) .vehicle-search-input {
     background: #ffffff;
-    border-color: rgba(148, 163, 184, 0.45);
+    border-color: #e2e8f0;
     color: #0f172a;
-    box-shadow: 0 6px 16px rgba(148, 163, 184, 0.16);
+    box-shadow: none;
 }
 
 body:not(.dark) .vehicle-search-input::placeholder {
