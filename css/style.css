@@ -579,59 +579,19 @@ body:not(.dark) .map-popup-notes {
     z-index: 1;
 }
 
-.vehicle-search-shell {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.vehicle-search-input {
     width: 100%;
-    padding: 10px 12px;
-    border-radius: 14px;
+    border-radius: 12px;
     border: 1px solid transparent;
+    padding: 10px 12px;
+    font-size: 15px;
+    outline: none;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-.vehicle-search-shell:focus-within {
+.vehicle-search-input:focus {
     border-color: #6366f1;
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.18);
-}
-
-.vehicle-search-icon {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-    opacity: 0.85;
-}
-
-.vehicle-search-input {
-    width: 100%;
-    border: none;
-    background: transparent;
-    padding: 0;
-    font-size: 15px;
-    outline: none;
-}
-
-.vehicle-search-clear {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    border: 1px solid transparent;
-    border-radius: 999px;
-    background: transparent;
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1;
-    cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-
-.vehicle-search-clear.is-visible {
-    opacity: 1;
-    pointer-events: auto;
 }
 
 .vehicles-toggle-btn {
@@ -821,29 +781,13 @@ body.dark .vehicles-toggle-btn {
 }
 
 body.dark .vehicle-search-input {
+    background: rgba(15, 23, 42, 0.92);
+    border-color: rgba(148, 163, 184, 0.28);
     color: #e2e8f0;
 }
 
 body.dark .vehicle-search-input::placeholder {
     color: #94a3b8;
-}
-
-body.dark .vehicle-search-shell {
-    background: linear-gradient(180deg, rgba(15, 23, 42, 0.96), rgba(15, 23, 42, 0.86));
-    border-color: rgba(148, 163, 184, 0.28);
-}
-
-body.dark .vehicle-search-icon {
-    color: #a5b4fc;
-}
-
-body.dark .vehicle-search-clear {
-    color: #cbd5e1;
-    border-color: rgba(148, 163, 184, 0.35);
-}
-
-body.dark .vehicle-search-clear:hover {
-    background: rgba(51, 65, 85, 0.85);
 }
 
 body.dark .vehicle-card {
@@ -934,30 +878,14 @@ body:not(.dark) .vehicles-toggle-btn {
 }
 
 body:not(.dark) .vehicle-search-input {
+    background: #ffffff;
+    border-color: rgba(148, 163, 184, 0.45);
     color: #0f172a;
+    box-shadow: 0 6px 16px rgba(148, 163, 184, 0.16);
 }
 
 body:not(.dark) .vehicle-search-input::placeholder {
     color: #64748b;
-}
-
-body:not(.dark) .vehicle-search-shell {
-    background: #ffffff;
-    border-color: rgba(148, 163, 184, 0.45);
-    box-shadow: 0 6px 16px rgba(148, 163, 184, 0.16);
-}
-
-body:not(.dark) .vehicle-search-icon {
-    color: #4338ff;
-}
-
-body:not(.dark) .vehicle-search-clear {
-    color: #334155;
-    border-color: rgba(148, 163, 184, 0.42);
-}
-
-body:not(.dark) .vehicle-search-clear:hover {
-    background: #f1f5f9;
 }
 
 body:not(.dark) .vehicle-card {

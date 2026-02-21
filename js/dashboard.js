@@ -36,7 +36,6 @@ const vehiclesList = document.getElementById('vehiclesList');
 const deliveredVehiclesList = document.getElementById('deliveredVehiclesList');
 const groupByDestinationBtn = document.getElementById('groupByDestinationBtn');
 const vehiclesSearchInput = document.getElementById("vehiclesSearchInput");
-const vehiclesSearchClearBtn = document.getElementById("vehiclesSearchClearBtn");
 let receivedVehiclesCache = [];
 let deliveredVehiclesCache = [];
 let groupByDestination = false;
@@ -834,17 +833,7 @@ groupByDestinationBtn?.addEventListener("click", () => {
 
 vehiclesSearchInput?.addEventListener("input", () => {
     vehicleSearchQuery = vehiclesSearchInput.value || "";
-    vehiclesSearchClearBtn?.classList.toggle("is-visible", Boolean(vehicleSearchQuery.trim()));
     renderReceivedVehicles(receivedVehiclesCache);
-});
-
-vehiclesSearchClearBtn?.addEventListener("click", () => {
-    if (!vehiclesSearchInput) return;
-    vehiclesSearchInput.value = "";
-    vehicleSearchQuery = "";
-    vehiclesSearchClearBtn.classList.remove("is-visible");
-    renderReceivedVehicles(receivedVehiclesCache);
-    vehiclesSearchInput.focus();
 });
 
 updateGroupButtonLabel();
