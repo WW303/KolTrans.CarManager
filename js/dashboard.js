@@ -35,9 +35,12 @@ const body = document.body;
 const vehiclesList = document.getElementById('vehiclesList');
 const deliveredVehiclesList = document.getElementById('deliveredVehiclesList');
 const groupByDestinationBtn = document.getElementById('groupByDestinationBtn');
+const vehiclesSearchInput = document.getElementById("vehiclesSearchInput");
+const vehiclesSearchClearBtn = document.getElementById("vehiclesSearchClearBtn");
 let receivedVehiclesCache = [];
 let deliveredVehiclesCache = [];
 let groupByDestination = false;
+let vehicleSearchQuery = "";
 
 // --- Logika Sidebara ---
 function openMenu() {
@@ -123,6 +126,9 @@ nDeliveredVehicles.addEventListener('click', () => switchTab('delivered'));
 
 // --- Logika Mapy ---
 const showMapBtn = document.getElementById("showMapBtn");
+const saveKeyBtn = document.getElementById("saveKeyBtn");
+const apiKeyInput = document.getElementById("api_key_input");
+const FORCED_MAP_ID = "AIzaSyCDwQLig57_MHm7OrUpsqZxRYco9bI12gI";
 const mapDiv = document.getElementById("map");
 const placeholder = document.getElementById("mapPlaceholder");
 const countryFilterAllBtn = document.getElementById("countryFilterAllBtn");
@@ -142,6 +148,11 @@ const carNotesInput = document.getElementById("car_notes_input");
 const addressFormFields = document.getElementById("addressFormFields");
 let addressFormHideTimer = null;
 let selectedCountryFilter = "all";
+window.mapHasMapId = false;
+
+if (apiKeyInput) {
+    apiKeyInput.value = localStorage.getItem("google_maps_api_key") || "";
+}
 
 function updateCountryFilterButtons() {
     const setState = (button, isActive) => {
@@ -167,9 +178,16 @@ function setCountryFilter(filter) {
     loadMarkersFromDb();
 }
 
+saveKeyBtn?.addEventListener("click", () => {
+    const key = apiKeyInput?.value.trim() || "";
+    if (key) localStorage.setItem("google_maps_api_key", key);
+    else localStorage.removeItem("google_maps_api_key");
+    setAddressStatus("Zapisano ustawienia Google Maps.", "success");
+});
+
 showMapBtn.onclick = () => {
-    const apiKeyInput = document.getElementById('api_key_input');
-    const currentKey = localStorage.getItem('google_maps_api_key') || apiKeyInput.value.trim();
+    const currentKey = localStorage.getItem("google_maps_api_key") || apiKeyInput?.value.trim();
+    const currentMapId = FORCED_MAP_ID;
 
     if (!currentKey) {
         alert("Najpierw wprowadź i zapisz klucz API Google Maps.");
@@ -189,7 +207,7 @@ showMapBtn.onclick = () => {
         if (window.mapLoaded) {
             loadMarkersFromDb();
         } else {
-            loadMap(currentKey);
+            loadMap(currentKey, currentMapId);
         }
     }
 };
@@ -303,17 +321,35 @@ addressInput?.addEventListener("keydown", (event) => {
     if (event.key === "Enter") addAddressPoint(false);
 });
 
-function loadMap(key) {
+function loadMap(key, mapId = "") {
     if(window.mapLoaded) return;
     window.mapLoaded = true;
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=marker`;
     script.async = true;
-    script.onload = () => {
-        window.mapInstance = new google.maps.Map(mapDiv, {
+    script.onload = async () => {
+        const mapOptions = {
             center: { lat: 52.2297, lng: 21.0122 },
             zoom: 10,
-        });
+        };
+        const trimmedMapId = String(mapId || "").trim();
+        if (trimmedMapId) {
+            mapOptions.mapId = trimmedMapId;
+            window.mapHasMapId = true;
+        } else {
+            window.mapHasMapId = false;
+        }
+        window.mapInstance = new google.maps.Map(mapDiv, mapOptions);
+        if (window.mapHasMapId) {
+            try {
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+                window.AdvancedMarkerElement = AdvancedMarkerElement;
+            } catch (error) {
+                window.AdvancedMarkerElement = null;
+            }
+        } else {
+            window.AdvancedMarkerElement = null;
+        }
         window.mapGeocoder = new google.maps.Geocoder();
         window.mapInfoWindow = new google.maps.InfoWindow();
         window.mapMarkers = [];
@@ -324,37 +360,87 @@ function loadMap(key) {
 }
 
 function buildInfoContent(record) {
-    const address = record.adres || "Nie podano";
-    const destination = record.docelowo || "Nie podano";
-    const destinationCountry = record.krajDocelowy || "Nie podano";
-    const carMake = record.marka || "Nie podano";
-    const carModel = record.model || "Nie podano";
-    const phone = record.numerTelefonu || "Nie podano";
-    const pickupPhone = record.numerTelefonuOdbioru || "Nie podano";
-    const carNotes = record.uwagi || "Brak uwag";
-    const id = record.id || "Nie podano";
+    const escapeHtml = (value) => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    const rawAddress = (record.adres || "").trim();
+    const address = escapeHtml(rawAddress || "Nie podano");
+    const destination = escapeHtml(record.docelowo || "Nie podano");
+    const destinationCountry = escapeHtml(record.krajDocelowy || "Nie podano");
+    const carMake = escapeHtml(record.marka || "Nie podano");
+    const carModel = escapeHtml(record.model || "Nie podano");
+    const rawPhone = (record.numerTelefonu || "").trim();
+    const rawPickupPhone = (record.numerTelefonuOdbioru || "").trim();
+    const phone = escapeHtml(rawPhone || "Nie podano");
+    const pickupPhone = escapeHtml(rawPickupPhone || "Nie podano");
+    const carNotes = escapeHtml(record.uwagi || "Brak uwag");
+    const id = escapeHtml(record.id || "Nie podano");
+    const mapHref = rawAddress
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawAddress)}`
+        : "";
+    const normalizedPhone = rawPhone.replace(/[^\d+]/g, "");
+    const normalizedPickupPhone = rawPickupPhone.replace(/[^\d+]/g, "");
+    const phoneHref = /\d/.test(normalizedPhone) ? `tel:${normalizedPhone}` : "";
+    const pickupPhoneHref = /\d/.test(normalizedPickupPhone) ? `tel:${normalizedPickupPhone}` : "";
+    const addressView = mapHref
+        ? `<a class="map-popup-link" href="${mapHref}" target="_blank" rel="noopener noreferrer">${address}</a>`
+        : `<span class="map-popup-value">${address}</span>`;
+    const phoneView = phoneHref
+        ? `<a class="map-popup-link map-popup-phone-link" href="${phoneHref}">${phone}</a>`
+        : `<span class="map-popup-value">${phone}</span>`;
+    const pickupPhoneView = pickupPhoneHref
+        ? `<a class="map-popup-link map-popup-phone-link" href="${pickupPhoneHref}">${pickupPhone}</a>`
+        : `<span class="map-popup-value">${pickupPhone}</span>`;
+
     return `
-        <div style="min-width:220px;color:#000">
-            <div style="font-weight:600;margin-bottom:4px">${address}</div>
-            <div><strong>Miejsce docelowe:</strong> ${destination}</div>
-            <div><strong>Kraj docelowy:</strong> ${destinationCountry}</div>
-            <div><strong>Marka:</strong> ${carMake}</div>
-            <div><strong>Model:</strong> ${carModel}</div>
-            <div><strong>Telefon:</strong> ${phone}</div>
-            <div><strong>Telefon odbioru:</strong> ${pickupPhone}</div>
-            <div style="margin-top:6px"><strong>Uwagi:</strong> ${carNotes}</div>
-            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-                <button class="mark-received-btn" data-id="${record.id}" style="background:#16a34a;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
+        <div class="map-popup">
+            <div class="map-popup-top">
+                <div class="map-popup-title-wrap">
+                    <p class="map-popup-title">${carMake} ${carModel}</p>
+                    <p class="map-popup-address">${addressView}</p>
+                </div>
+                <span class="map-popup-id">ID ${id}</span>
+            </div>
+
+            <div class="map-popup-panel">
+                <div class="map-popup-item">
+                    <span class="map-popup-label">Miejsce docelowe</span>
+                    <span class="map-popup-value">${destination}</span>
+                </div>
+                <div class="map-popup-item">
+                    <span class="map-popup-label">Kraj docelowy</span>
+                    <span class="map-popup-value">${destinationCountry}</span>
+                </div>
+                <div class="map-popup-item">
+                    <span class="map-popup-label">Telefon</span>
+                    ${phoneView}
+                </div>
+                <div class="map-popup-item">
+                    <span class="map-popup-label">Telefon odbioru</span>
+                    ${pickupPhoneView}
+                </div>
+            </div>
+
+            <div class="map-popup-notes">
+                <span class="map-popup-label">Uwagi</span>
+                <p>${carNotes}</p>
+            </div>
+
+            <div class="map-popup-actions">
+                <button class="map-popup-btn map-popup-btn-success mark-received-btn" data-id="${record.id}">
                     Oznacz odebrany
                 </button>
-                <button class="delete-vehicle-btn" data-id="${record.id}" style="background:#dc2626;color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer">
-                    Usuń pojazd
+                <button class="map-popup-btn map-popup-btn-danger delete-vehicle-btn" data-id="${record.id}">
+                    Usun pojazd
                 </button>
             </div>
         </div>
     `;
 }
-
 async function markAsReceived(recordId, button) {
     if (!recordId) return;
     if (button) {
@@ -433,18 +519,44 @@ function updateGroupButtonLabel() {
 }
 
 function buildVehicleCard(record) {
-    const address = record.adres || "Nie podano";
+    const escapeHtml = (value) => String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+
+    const rawAddress = (record.adres || "").trim();
+    const address = escapeHtml(rawAddress || "Nie podano");
     const destination = record.docelowo || "Nie podano";
     const destinationCountry = record.krajDocelowy || "Nie podano";
     const carMake = record.marka || "Nie podano";
     const carModel = record.model || "Nie podano";
-    const phone = record.numerTelefonu || "Nie podano";
-    const pickupPhone = record.numerTelefonuOdbioru || "Nie podano";
+    const rawPhone = (record.numerTelefonu || "").trim();
+    const rawPickupPhone = (record.numerTelefonuOdbioru || "").trim();
+    const phone = escapeHtml(rawPhone || "Nie podano");
+    const pickupPhone = escapeHtml(rawPickupPhone || "Nie podano");
     const carNotes = record.uwagi || "Brak uwag";
     const statusClass = record.czyOdebrany ? "vehicle-received" : "vehicle-pending";
     const statusText = record.czyOdebrany ? "Odebrany" : "Nieodebrany";
     const isDelivered = Boolean(record.czyDostarczony);
     const deliveryLabel = isDelivered ? "Dostarczony" : "Oznacz jako dostarczony";
+    const mapHref = rawAddress
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(rawAddress)}`
+        : "";
+    const normalizedPhone = rawPhone.replace(/[^\d+]/g, "");
+    const normalizedPickupPhone = rawPickupPhone.replace(/[^\d+]/g, "");
+    const phoneHref = /\d/.test(normalizedPhone) ? `tel:${normalizedPhone}` : "";
+    const pickupPhoneHref = /\d/.test(normalizedPickupPhone) ? `tel:${normalizedPickupPhone}` : "";
+    const addressView = mapHref
+        ? `<a class="vehicle-link" href="${mapHref}" target="_blank" rel="noopener noreferrer">${address}</a>`
+        : address;
+    const phoneView = phoneHref
+        ? `<a class="vehicle-link vehicle-phone-link" href="${phoneHref}">${phone}</a>`
+        : phone;
+    const pickupPhoneView = pickupPhoneHref
+        ? `<a class="vehicle-link vehicle-phone-link" href="${pickupPhoneHref}">${pickupPhone}</a>`
+        : pickupPhone;
 
     return `
         <div class="vehicle-card ${statusClass}">
@@ -454,9 +566,9 @@ function buildVehicleCard(record) {
                 <div class="vehicle-destination"><span class="vehicle-destination-label">Kraj docelowy:</span> ${destinationCountry}</div>
             </div>
             <div class="vehicle-grid">
-                <div><span class="vehicle-label">Adres:</span> ${address}</div>
-                <div><span class="vehicle-label">Telefon:</span> ${phone}</div>
-                <div><span class="vehicle-label">Telefon odbioru:</span> ${pickupPhone}</div>
+                <div><span class="vehicle-label">Adres:</span> ${addressView}</div>
+                <div><span class="vehicle-label">Telefon:</span> ${phoneView}</div>
+                <div><span class="vehicle-label">Telefon odbioru:</span> ${pickupPhoneView}</div>
                 <div><span class="vehicle-label">Status:</span> <span class="vehicle-status-text">${statusText}</span></div>
                 <div class="vehicle-notes"><span class="vehicle-label">Uwagi:</span> ${carNotes}</div>
             </div>
@@ -491,6 +603,27 @@ function bindDeliveryButtons() {
     });
 }
 
+function normalizeSearchText(value) {
+    return String(value || "")
+        .toLocaleLowerCase("pl-PL")
+        .trim();
+}
+
+function filterReceivedVehicles(records) {
+    const query = normalizeSearchText(vehicleSearchQuery);
+    if (!query) return records;
+
+    const tokens = query.split(/\s+/).filter(Boolean);
+    if (!tokens.length) return records;
+
+    return records.filter(record => {
+        const searchable = normalizeSearchText(
+            `${record.marka || ""} ${record.model || ""} ${record.adres || ""}`
+        );
+        return tokens.every(token => searchable.includes(token));
+    });
+}
+
 function renderReceivedVehicles(records) {
     if (!vehiclesList) return;
     if (!records?.length) {
@@ -502,13 +635,23 @@ function renderReceivedVehicles(records) {
         return;
     }
 
+    const filteredRecords = filterReceivedVehicles(records);
+    if (!filteredRecords.length) {
+        vehiclesList.innerHTML = `
+            <div class="vehicles-empty">
+                Brak pojazdow pasujacych do wyszukiwania.
+            </div>
+        `;
+        return;
+    }
+
     if (!groupByDestination) {
-        vehiclesList.innerHTML = records.map(buildVehicleCard).join("");
+        vehiclesList.innerHTML = filteredRecords.map(buildVehicleCard).join("");
         bindDeliveryButtons();
         return;
     }
 
-    const groups = records.reduce((acc, record) => {
+    const groups = filteredRecords.reduce((acc, record) => {
         const destinationRaw = (record.docelowo || "Nie podano").trim();
         const normalizedKey = destinationRaw.toLocaleLowerCase("pl-PL");
         if (!acc[normalizedKey]) {
@@ -636,8 +779,28 @@ async function loadMarkersFromDb() {
         const infoContent = buildInfoContent(record);
         marker.addListener("click", () => {
             window.mapInfoWindow.setContent(infoContent);
-            window.mapInfoWindow.open(window.mapInstance, marker);
+            window.mapInfoWindow.open({
+                anchor: marker,
+                map: window.mapInstance,
+            });
             google.maps.event.addListenerOnce(window.mapInfoWindow, "domready", () => {
+                const popupRoot = document.querySelector(".map-popup");
+                const popupContainer = document.querySelector(".gm-style .gm-style-iw-d");
+                if (popupRoot) {
+                    popupRoot.addEventListener("wheel", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        popupRoot.scrollTop += event.deltaY;
+                    }, { passive: false });
+                }
+                if (popupContainer) {
+                    popupContainer.addEventListener("wheel", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        popupContainer.scrollTop += event.deltaY;
+                    }, { passive: false });
+                }
+
                 const markReceivedSelector = `.mark-received-btn[data-id="${record.id}"]`;
                 const markReceivedButton = document.querySelector(markReceivedSelector);
                 if (markReceivedButton) {
@@ -669,6 +832,21 @@ groupByDestinationBtn?.addEventListener("click", () => {
     renderReceivedVehicles(receivedVehiclesCache);
 });
 
+vehiclesSearchInput?.addEventListener("input", () => {
+    vehicleSearchQuery = vehiclesSearchInput.value || "";
+    vehiclesSearchClearBtn?.classList.toggle("is-visible", Boolean(vehicleSearchQuery.trim()));
+    renderReceivedVehicles(receivedVehiclesCache);
+});
+
+vehiclesSearchClearBtn?.addEventListener("click", () => {
+    if (!vehiclesSearchInput) return;
+    vehiclesSearchInput.value = "";
+    vehicleSearchQuery = "";
+    vehiclesSearchClearBtn.classList.remove("is-visible");
+    renderReceivedVehicles(receivedVehiclesCache);
+    vehiclesSearchInput.focus();
+});
+
 updateGroupButtonLabel();
 updateCountryFilterButtons();
 
@@ -679,4 +857,6 @@ onAuthStateChanged(auth, user => {
 document.getElementById("logoutBtn").onclick = () => {
     signOut(auth).then(() => { window.location.href = "index.html"; });
 };
+
+
 
