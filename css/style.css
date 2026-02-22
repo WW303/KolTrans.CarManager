@@ -408,6 +408,7 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
     width: 8px;
 }
 
+
 .map-popup::-webkit-scrollbar-thumb {
     border-radius: 8px;
     background: rgba(100, 116, 139, 0.55);
