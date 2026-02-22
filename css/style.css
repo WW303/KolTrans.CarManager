@@ -233,41 +233,23 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
 
 /* --- GOOGLE MAPS INFO WINDOW --- */
 .gm-style .gm-style-iw-c {
-    border-radius: 16px;
+    border-radius: 12px;
     padding: 0 !important;
     background: transparent !important;
-    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.35) !important;
-    max-width: min(92vw, 360px) !important;
-    width: min(92vw, 360px) !important;
+    max-width: min(86vw, 260px) !important;
+    width: min(86vw, 260px) !important;
 }
 
 .gm-style .gm-style-iw-d {
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    max-height: min(72vh, 560px) !important;
-    max-width: min(92vw, 360px) !important;
+    max-height: min(62vh, 420px) !important;
+    max-width: min(86vw, 260px) !important;
     padding: 0 !important;
 }
 
 .gm-style .gm-style-iw-tc::after {
     background: transparent !important;
-}
-
-.gm-style .gm-style-iw-chr {
-    background: #0f172a !important;
-    border-bottom: 1px solid #1e293b;
-}
-
-.gm-style .gm-style-iw-ch {
-    background: #0f172a !important;
-}
-
-.gm-style .gm-style-iw-ch button.gm-ui-hover-effect {
-    opacity: 1 !important;
-}
-
-.gm-style .gm-style-iw-ch button.gm-ui-hover-effect span {
-    filter: brightness(0) invert(1);
 }
 
 .map-marker-pin {
@@ -292,116 +274,69 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
 .map-popup {
     width: 100%;
     max-width: 100%;
-    max-height: min(72vh, 520px);
+    max-height: min(62vh, 400px);
     box-sizing: border-box;
-    padding: 10px;
+    padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 6px;
     overflow-x: hidden;
     overflow-y: auto;
-    overscroll-behavior: contain;
     border: 1px solid #334155;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
-.map-popup-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-}
-
-.map-popup-title-wrap {
+.map-popup-header {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    min-width: 0;
+    gap: 6px;
 }
 
 .map-popup-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.25;
     font-weight: 800;
     word-break: break-word;
 }
 
-.map-popup-address {
-    margin: 0;
-    font-size: 12px;
-    line-height: 1.35;
-    opacity: 0.9;
-    word-break: break-word;
-}
-
 .map-popup-id {
-    display: inline-flex;
-    align-items: center;
-    border: 1px solid #334155;
-    border-radius: 999px;
-    padding: 4px 8px;
     font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
+    font-weight: 600;
 }
 
-.map-popup-panel {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-}
-
-.map-popup-item {
+.map-popup-row {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 7px 8px;
-    border: 1px solid #334155;
-    border-radius: 8px;
-    background: rgba(15, 23, 42, 0.24);
+    gap: 2px;
 }
 
 .map-popup-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
 .map-popup-value {
-    font-size: 13px;
-    line-height: 1.3;
+    font-size: 12px;
+    line-height: 1.25;
     word-break: break-word;
     font-weight: 600;
 }
 
 .map-popup-link {
-    font-size: 13px;
-    line-height: 1.3;
-    word-break: break-word;
-    font-weight: 600;
+    color: inherit;
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
 }
 
-.map-popup-phone-link {
-    font-variant-numeric: tabular-nums;
-}
-
 .map-popup-notes {
-    border: 1px solid #334155;
-    border-radius: 8px;
-    padding: 7px 8px;
-    background: rgba(15, 23, 42, 0.24);
-}
-
-.map-popup-notes p {
-    margin: 4px 0 0;
-    font-size: 13px;
-    line-height: 1.35;
+    font-size: 12px;
+    line-height: 1.3;
     word-break: break-word;
+    font-weight: 600;
 }
 
 .map-popup::-webkit-scrollbar {
@@ -425,8 +360,8 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
     width: 100%;
     border: 1px solid transparent;
     border-radius: 8px;
-    padding: 9px 11px;
-    font-size: 13px;
+    padding: 8px 10px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
@@ -442,17 +377,15 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
 }
 
 .map-popup-btn-success {
-    background: linear-gradient(180deg, #22c55e, #16a34a);
+    background: #22c55e;
     border-color: #15803d;
     color: #ffffff;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .map-popup-btn-danger {
-    background: linear-gradient(180deg, #ef4444, #dc2626);
+    background: #ef4444;
     border-color: #b91c1c;
     color: #ffffff;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 body.dark .map-popup {
@@ -465,17 +398,6 @@ body.dark .map-popup-label {
     color: #cbd5e1;
 }
 
-body.dark .map-popup-link {
-    color: #93c5fd;
-}
-
-body.dark .map-popup-id,
-body.dark .map-popup-item,
-body.dark .map-popup-notes {
-    border-color: #334155;
-    background: rgba(15, 23, 42, 0.35);
-}
-
 body:not(.dark) .map-popup {
     background: #ffffff;
     color: #0f172a;
@@ -486,39 +408,27 @@ body:not(.dark) .map-popup-label {
     color: #475569;
 }
 
-body:not(.dark) .map-popup-link {
-    color: #1d4ed8;
-}
-
-body:not(.dark) .map-popup-id,
-body:not(.dark) .map-popup-item,
-body:not(.dark) .map-popup-notes {
-    border-color: #e2e8f0;
-    background: #f8fafc;
-}
-
 @media (max-width: 360px) {
     .gm-style .gm-style-iw-c {
-        max-width: 94vw !important;
-        width: 94vw !important;
+        max-width: 88vw !important;
+        width: 88vw !important;
     }
 
     .gm-style .gm-style-iw-d {
-        max-width: 94vw !important;
+        max-width: 88vw !important;
     }
 
     .map-popup {
-        padding: 8px;
+        padding: 6px;
     }
 
     .map-popup-title {
-        font-size: 15px;
+        font-size: 13px;
     }
 
     .map-popup-value,
-    .map-popup-link,
-    .map-popup-notes p {
-        font-size: 12px;
+    .map-popup-notes {
+        font-size: 11px;
     }
 }
 /* --- ODEBRANE POJAZDY --- */

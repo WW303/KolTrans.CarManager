@@ -387,46 +387,44 @@ function buildInfoContent(record) {
     const pickupPhoneHref = /\d/.test(normalizedPickupPhone) ? `tel:${normalizedPickupPhone}` : "";
     const addressView = mapHref
         ? `<a class="map-popup-link" href="${mapHref}" target="_blank" rel="noopener noreferrer">${address}</a>`
-        : `<span class="map-popup-value">${address}</span>`;
+        : address;
     const phoneView = phoneHref
-        ? `<a class="map-popup-link map-popup-phone-link" href="${phoneHref}">${phone}</a>`
-        : `<span class="map-popup-value">${phone}</span>`;
+        ? `<a class="map-popup-link" href="${phoneHref}">${phone}</a>`
+        : phone;
     const pickupPhoneView = pickupPhoneHref
-        ? `<a class="map-popup-link map-popup-phone-link" href="${pickupPhoneHref}">${pickupPhone}</a>`
-        : `<span class="map-popup-value">${pickupPhone}</span>`;
+        ? `<a class="map-popup-link" href="${pickupPhoneHref}">${pickupPhone}</a>`
+        : pickupPhone;
 
     return `
-        <div class="map-popup">
-            <div class="map-popup-top">
-                <div class="map-popup-title-wrap">
-                    <p class="map-popup-title">${carMake} ${carModel}</p>
-                    <p class="map-popup-address">${addressView}</p>
-                </div>
-                <span class="map-popup-id">ID ${id}</span>
+        <div class="map-popup" role="dialog" aria-label="Szczegoly pojazdu">
+            <div class="map-popup-header">
+                <div class="map-popup-title">${carMake} ${carModel}</div>
+                <div class="map-popup-id">ID ${id}</div>
             </div>
 
-            <div class="map-popup-panel">
-                <div class="map-popup-item">
-                    <span class="map-popup-label">Miejsce docelowe</span>
-                    <span class="map-popup-value">${destination}</span>
-                </div>
-                <div class="map-popup-item">
-                    <span class="map-popup-label">Kraj docelowy</span>
-                    <span class="map-popup-value">${destinationCountry}</span>
-                </div>
-                <div class="map-popup-item">
-                    <span class="map-popup-label">Telefon</span>
-                    ${phoneView}
-                </div>
-                <div class="map-popup-item">
-                    <span class="map-popup-label">Telefon odbioru</span>
-                    ${pickupPhoneView}
-                </div>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Adres</div>
+                <div class="map-popup-value">${addressView}</div>
             </div>
-
-            <div class="map-popup-notes">
-                <span class="map-popup-label">Uwagi</span>
-                <p>${carNotes}</p>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Miejsce docelowe</div>
+                <div class="map-popup-value">${destination}</div>
+            </div>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Kraj docelowy</div>
+                <div class="map-popup-value">${destinationCountry}</div>
+            </div>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Telefon</div>
+                <div class="map-popup-value">${phoneView}</div>
+            </div>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Telefon odbioru</div>
+                <div class="map-popup-value">${pickupPhoneView}</div>
+            </div>
+            <div class="map-popup-row">
+                <div class="map-popup-label">Uwagi</div>
+                <div class="map-popup-notes">${carNotes}</div>
             </div>
 
             <div class="map-popup-actions">
@@ -783,23 +781,6 @@ async function loadMarkersFromDb() {
                 map: window.mapInstance,
             });
             google.maps.event.addListenerOnce(window.mapInfoWindow, "domready", () => {
-                const popupRoot = document.querySelector(".map-popup");
-                const popupContainer = document.querySelector(".gm-style .gm-style-iw-d");
-                if (popupRoot) {
-                    popupRoot.addEventListener("wheel", (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        popupRoot.scrollTop += event.deltaY;
-                    }, { passive: false });
-                }
-                if (popupContainer) {
-                    popupContainer.addEventListener("wheel", (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        popupContainer.scrollTop += event.deltaY;
-                    }, { passive: false });
-                }
-
                 const markReceivedSelector = `.mark-received-btn[data-id="${record.id}"]`;
                 const markReceivedButton = document.querySelector(markReceivedSelector);
                 if (markReceivedButton) {
