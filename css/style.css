@@ -237,12 +237,15 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
     padding: 0 !important;
     background: transparent !important;
     box-shadow: 0 14px 28px rgba(2, 6, 23, 0.35) !important;
+    max-width: min(92vw, 360px) !important;
+    width: min(92vw, 360px) !important;
 }
 
 .gm-style .gm-style-iw-d {
     overflow-x: hidden !important;
     overflow-y: auto !important;
     max-height: min(72vh, 560px) !important;
+    max-width: min(92vw, 360px) !important;
     padding: 0 !important;
 }
 
@@ -287,8 +290,8 @@ body:not(.dark) #countryFilterFranceBtn.bg-indigo-600 {
 }
 
 .map-popup {
-    width: min(84vw, 300px);
-    max-width: 300px;
+    width: 100%;
+    max-width: 100%;
     max-height: min(72vh, 520px);
     box-sizing: border-box;
     padding: 10px;
@@ -494,9 +497,16 @@ body:not(.dark) .map-popup-notes {
 }
 
 @media (max-width: 360px) {
+    .gm-style .gm-style-iw-c {
+        max-width: 94vw !important;
+        width: 94vw !important;
+    }
+
+    .gm-style .gm-style-iw-d {
+        max-width: 94vw !important;
+    }
+
     .map-popup {
-        width: 82vw;
-        max-width: 82vw;
         padding: 8px;
     }
 
