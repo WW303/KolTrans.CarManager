@@ -237,15 +237,15 @@ function resetAddressForm() {
 }
 
 async function addAddressPoint(isReceived = false) {
-    const address = addressInput?.value.trim();
-    if (!address) {
+    let address = addressInput?.value.trim() || "";
+    if (!address && !isReceived) {
         setAddressStatus("Wpisz adres.", "error");
         addressInput?.focus();
         return;
     }
-    if (!window.mapInstance || !window.mapGeocoder) {
-        setAddressStatus("Najpierw wczytaj mape.", "error");
-        return;
+    if (!address && isReceived) {
+        address = "hala";
+        if (addressInput) addressInput.value = "hala";
     }
 
     const carMake = carMakeInput?.value.trim() || "Nie podano";
@@ -267,6 +267,45 @@ async function addAddressPoint(isReceived = false) {
         addressFormHideTimer = null;
     }
     toggleAddressForm(true);
+
+    if (isReceived) {
+        setAddressStatus("Zapisuję pojazd w bazie...", "info");
+        const { error } = await supabase.from("cars").insert([
+            {
+                adres: address,
+                marka: carMake,
+                model: carModel,
+                uwagi: carNotes,
+                czyOdebrany: true,
+                docelowo: destination,
+                krajDocelowy: destinationCountry,
+                numerTelefonu: phone,
+                numerTelefonuOdbioru: pickupPhone,
+                lat: null,
+                lng: null,
+            },
+        ]);
+
+        if (error) {
+            setAddressStatus("Nie udało się zapisać pojazdu.", "error");
+            toggleAddressForm(false);
+            return;
+        }
+
+        setAddressStatus("Pojazd zapisany.", "success");
+        resetAddressForm();
+        addressFormHideTimer = setTimeout(() => {
+            toggleAddressForm(false);
+        }, 1200);
+        return;
+    }
+
+    if (!window.mapInstance || !window.mapGeocoder) {
+        setAddressStatus("Najpierw wczytaj mape.", "error");
+        toggleAddressForm(false);
+        return;
+    }
+
     setAddressStatus("Szukam adresu...", "info");
     window.mapGeocoder.geocode({ address }, async (results, status) => {
         if (status !== "OK" || !results || !results.length) {
@@ -827,6 +866,7 @@ onAuthStateChanged(auth, user => {
 document.getElementById("logoutBtn").onclick = () => {
     signOut(auth).then(() => { window.location.href = "index.html"; });
 };
+
 
 
 
